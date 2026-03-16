@@ -38,7 +38,7 @@ test('scrapeHackerNews parses a simulated HN thread correctly', async () => {
     return Promise.reject('Unknown URL');
   });
 
-  global.fetch = mockFetch as any;
+  global.fetch = mockFetch as unknown as typeof fetch;
 
   const jobs = await scrapeHackerNews();
 

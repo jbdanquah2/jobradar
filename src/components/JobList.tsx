@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { updateJobStatus, triggerIngestion } from '@/app/actions';
 import { Building, MapPin, ExternalLink, Bookmark, CheckCircle, XCircle, RefreshCw, ChevronLeft, ChevronRight, Search, Filter, Calendar, Globe, Plane } from 'lucide-react';
 import Link from 'next/link';
@@ -10,6 +9,7 @@ function DateDisplay({ date }: { date: Date | string }) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
@@ -31,12 +31,12 @@ export default function JobList({
   currentPage, 
   totalPages 
 }: { 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialJobs: any[], 
   currentStatus: string,
   currentPage: number,
   totalPages: number
 }) {
-  const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isIngesting, setIsIngesting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,8 +44,11 @@ export default function JobList({
   const [germanyOnly, setGermanyOnly] = useState(false);
   const [selectedSource, setSelectedSource] = useState('All Sources');
   const [isComponentMounted, setIsComponentMounted] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedJob, setSelectedJob] = useState<any | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsComponentMounted(true);
   }, []);
 
@@ -262,7 +265,12 @@ export default function JobList({
                           {job.eligibility_status}
                         </span>
                       </div>
-                      <span className="text-sm font-semibold text-blue-600 mt-2">Score: {job.match_score}</span>
+                      <div className="group relative mt-2 text-right">
+                        <span className="text-sm font-semibold text-blue-600 cursor-help border-b border-dotted border-blue-300 pb-0.5">Score: {job.match_score}</span>
+                        <div className="absolute right-0 top-6 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                          Based on skills match, location, seniority, and startup signals.
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -275,22 +283,30 @@ export default function JobList({
                   </div>
                 </div>
 
-                <div className="flex md:flex-col justify-end gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 min-w-[140px]">
+                <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 min-w-[140px]">
                   <a 
                     href={job.apply_url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    className="flex justify-center items-center px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Apply
                   </a>
+
+                  <button 
+                    onClick={() => setSelectedJob(job)}
+                    className="flex justify-center items-center px-4 py-2 bg-white text-blue-700 border border-blue-300 text-sm font-bold rounded-lg hover:bg-blue-50 transition-colors shadow-sm"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Details
+                  </button>
                   
                   {currentStatus !== 'SAVED' && (
                     <button 
                       disabled={loadingId === job.id}
                       onClick={() => handleStatusChange(job.id, 'SAVED')}
-                      className="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 text-sm font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                      className="flex justify-center items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 text-sm font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
                     >
                       <Bookmark className="w-4 h-4 mr-2" />
                       Save
@@ -301,7 +317,7 @@ export default function JobList({
                     <button 
                       disabled={loadingId === job.id}
                       onClick={() => handleStatusChange(job.id, 'APPLIED')}
-                      className="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-white text-green-700 border border-green-300 text-sm font-bold rounded-lg hover:bg-green-50 transition-colors shadow-sm"
+                      className="flex justify-center items-center px-4 py-2 bg-white text-green-700 border border-green-300 text-sm font-bold rounded-lg hover:bg-green-50 transition-colors shadow-sm"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
                       Applied
@@ -312,7 +328,7 @@ export default function JobList({
                     <button 
                       disabled={loadingId === job.id}
                       onClick={() => handleStatusChange(job.id, 'IGNORED')}
-                      className="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-white text-red-700 border border-red-300 text-sm font-bold rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+                      className="flex justify-center items-center px-4 py-2 bg-white text-red-700 border border-red-300 text-sm font-bold rounded-lg hover:bg-red-50 transition-colors shadow-sm"
                     >
                       <XCircle className="w-4 h-4 mr-2" />
                       Ignore
@@ -354,6 +370,56 @@ export default function JobList({
               </div>
             )}
           </>
+        )}
+
+        {selectedJob && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="flex justify-between items-start p-6 border-b border-gray-200 bg-gray-50">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 leading-tight">{selectedJob.title}</h2>
+                  <div className="flex items-center mt-2 text-gray-600 space-x-4">
+                    <span className="flex items-center text-sm font-medium">
+                      <Building className="w-4 h-4 mr-1.5" />
+                      {selectedJob.company}
+                    </span>
+                    <span className="flex items-center text-sm">
+                      <MapPin className="w-4 h-4 mr-1.5" />
+                      {selectedJob.location_text}
+                    </span>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedJob(null)} className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="flex-1 p-6 overflow-y-auto bg-white">
+                <div 
+                  className="prose prose-sm max-w-none text-gray-700 prose-headings:font-bold prose-headings:text-gray-900 prose-a:text-blue-600 hover:prose-a:text-blue-800"
+                  dangerouslySetInnerHTML={{ __html: selectedJob.description }} 
+                />
+              </div>
+
+              <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+                <button 
+                  onClick={() => setSelectedJob(null)} 
+                  className="px-6 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-bold rounded-lg transition-all"
+                >
+                  Close
+                </button>
+                <a 
+                  href={selectedJob.apply_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-all shadow-sm"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Apply on {selectedJob.source}
+                </a>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

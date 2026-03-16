@@ -61,8 +61,18 @@ export const RELOCATION_KEYWORDS = [
   'sponsorship available', 'work in germany'
 ];
 
+export const SOLUTIONS_KEYWORDS = [
+  'solutions engineer',
+  'solutions architect',
+  'developer solutions engineer',
+  'field engineer',
+  'partner engineer',
+  'technical solutions engineer'
+];
+
 export function calculateJobMatch(job: NormalizedJob): NormalizedJob {
   const textToAnalyze = `${job.title} ${job.description} ${job.location_text}`.toLowerCase();
+  const titleLower = job.title.toLowerCase();
   const profile = getProfileData();
 
   // 1. Skill Match Calculation (0-50 pts)
@@ -85,9 +95,12 @@ export function calculateJobMatch(job: NormalizedJob): NormalizedJob {
   const hasTimezoneKeyword = TIMEZONE_KEYWORDS.some(k => textToAnalyze.includes(k));
   const isGermany = GERMANY_KEYWORDS.some(k => textToAnalyze.includes(k));
   const hasRelocation = RELOCATION_KEYWORDS.some(k => textToAnalyze.includes(k));
+  const isSolutionsRole = SOLUTIONS_KEYWORDS.some(k => titleLower.includes(k));
 
-  // Minimum 40% skill match requirement
-  const meetsSkillThreshold = skillMatchPercent >= 40;
+  // Minimum 40% skill match requirement, but slightly relaxed for dedicated solutions roles 
+  // because their descriptions might be less keyword-dense in the stack department.
+  const skillThreshold = isSolutionsRole ? 30 : 40;
+  const meetsSkillThreshold = skillMatchPercent >= skillThreshold;
 
   if (hasRejectKeyword && !hasAcceptKeyword && !isGermany) {
     eligibility = 'REJECTED';
@@ -99,6 +112,11 @@ export function calculateJobMatch(job: NormalizedJob): NormalizedJob {
 
   // 3. Bonuses (Max 50 additional points)
   
+  // Solutions Role Bonus (max 10 points)
+  if (isSolutionsRole) {
+    score += 10;
+  }
+
   // Startup Signal Bonus (max 20 points)
   const startupScore = STARTUP_SIGNAL_KEYWORDS.filter(k => textToAnalyze.includes(k)).length * 5;
   score += Math.min(20, startupScore);

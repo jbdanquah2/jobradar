@@ -4,6 +4,7 @@ import { scrapeHackerNews } from '@/lib/scrapers/hackernews';
 import { scrapeAtsJobs } from '@/lib/scrapers/ats';
 import { scrapeHimalayas } from '@/lib/scrapers/himalayas';
 import { scrapeAllGermanJobs } from '@/lib/scrapers/germany';
+import { scrapeSolutionsJobs } from '@/lib/scrapers/solutions';
 import { calculateJobMatch } from '@/lib/scoring';
 
 export async function GET() {
@@ -12,8 +13,9 @@ export async function GET() {
     const atsJobs = await scrapeAtsJobs();
     const himalayasJobs = await scrapeHimalayas();
     const germanJobs = await scrapeAllGermanJobs();
+    const solutionsJobs = await scrapeSolutionsJobs();
 
-    const allJobs = [...hackerNewsJobs, ...atsJobs, ...himalayasJobs, ...germanJobs];
+    const allJobs = [...hackerNewsJobs, ...atsJobs, ...himalayasJobs, ...germanJobs, ...solutionsJobs];
     let ingestedCount = 0;
 
     for (const rawJob of allJobs) {

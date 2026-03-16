@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import JobList from '@/components/JobList';
+import ProfileEditor from '@/components/ProfileEditor';
 
 export default async function Home(props: {
   searchParams: Promise<{ status?: string; page?: string }>;
@@ -38,6 +39,7 @@ export default async function Home(props: {
             <h1 className="text-3xl font-bold tracking-tight">JobRadar</h1>
             <p className="text-gray-500 mt-1">Discover high-quality remote opportunities</p>
           </div>
+          <ProfileEditor />
         </header>
         
         <JobList 
