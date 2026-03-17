@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { calculateJobMatch } from '@/lib/scoring';
 
+import { performIngestion } from '@/lib/ingest';
+
 export async function updateJobStatus(id: string, status: string) {
   // First update status
   await prisma.job.update({
@@ -21,21 +23,35 @@ export async function updateJobStatus(id: string, status: string) {
 }
 
 export async function triggerIngestion() {
-  const host = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-  const res = await fetch(`${host}/api/cron/ingest`);
-  const data = await res.json();
-  revalidatePath('/');
-  return data;
+  try {
+    const result = await performIngestion();
+    revalidatePath('/');
+    return result;
+  } catch (error) {
+    console.error('Action Ingestion failed:', error);
+    throw new Error('Failed to fetch jobs. Check logs.');
+  }
 }
 
 export async function getProfileContent() {
   const profilePath = path.join(process.cwd(), 'data/profile.md');
-  return fs.readFileSync(profilePath, 'utf-8');
+  try {
+    return fs.readFileSync(profilePath, 'utf-8');
+  } catch (err) {
+    console.error('Failed to read profile.md:', err);
+    return '# Profile Missing\n\nEnsure data/profile.md is present in build.';
+  }
 }
 
 export async function updateProfileContent(newContent: string) {
   const profilePath = path.join(process.cwd(), 'data/profile.md');
-  fs.writeFileSync(profilePath, newContent, 'utf-8');
+  
+  try {
+    fs.writeFileSync(profilePath, newContent, 'utf-8');
+  } catch (err) {
+    console.error('Failed to write profile.md (Vercel is read-only!):', err);
+    throw new Error('FileSystem is read-only. Move Profile to DB for full functionality.');
+  }
   
   // Rescore all jobs
   const jobs = await prisma.job.findMany();
