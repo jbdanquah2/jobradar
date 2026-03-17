@@ -15,42 +15,47 @@ export const WATCHLIST = [
 export async function scrapeAtsJobs(): Promise<NormalizedJob[]> {
   const jobs: NormalizedJob[] = [];
 
-  for (const company of WATCHLIST) {
-    try {
-      if (company.type === 'greenhouse') {
-        const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${company.boardId}/jobs?content=true`);
-        if (!res.ok) continue;
-        const data = await res.json();
-        
-        for (const item of data.jobs) {
-          const title = item.title.toLowerCase();
+  const results = await Promise.all(
+    WATCHLIST.map(async (company) => {
+      const companyJobs: NormalizedJob[] = [];
+      try {
+        if (company.type === 'greenhouse') {
+          const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${company.boardId}/jobs?content=true`);
+          if (!res.ok) return [];
+          const data = await res.json();
           
-          // Broadening the filter to ensure we don't miss roles
-          if (!title.includes('engineer') && !title.includes('developer') && !title.includes('lead')) continue;
-          
-          // Check for stack-related keywords
-          const hasStackMatch = ['node', 'typescript', 'backend', 'full stack', 'ai', 'cloud', 'javascript', 'react', 'next'].some(k => title.includes(k));
-          if (!hasStackMatch) continue;
+          for (const item of data.jobs) {
+            const title = item.title.toLowerCase();
+            
+            // Broadening the filter to ensure we don't miss roles
+            if (!title.includes('engineer') && !title.includes('developer') && !title.includes('lead')) continue;
+            
+            // Check for stack-related keywords
+            const hasStackMatch = ['node', 'typescript', 'backend', 'full stack', 'ai', 'cloud', 'javascript', 'react', 'next'].some(k => title.includes(k));
+            if (!hasStackMatch) continue;
 
-          jobs.push({
-            title: item.title,
-            company: company.name,
-            location_text: item.location?.name || 'Remote',
-            remote_type: 'Remote',
-            description: item.content || '',
-            apply_url: item.absolute_url,
-            source: 'Greenhouse',
-            date_posted: new Date(item.updated_at || new Date()),
-            skills_detected: JSON.stringify([]),
-            match_score: 0,
-            eligibility_status: 'REVIEW_NEEDED',
-          });
+            companyJobs.push({
+              title: item.title,
+              company: company.name,
+              location_text: item.location?.name || 'Remote',
+              remote_type: 'Remote',
+              description: item.content || '',
+              apply_url: item.absolute_url,
+              source: 'Greenhouse',
+              date_posted: new Date(item.updated_at || new Date()),
+              skills_detected: JSON.stringify([]),
+              match_score: 0,
+              eligibility_status: 'REVIEW_NEEDED',
+            });
+          }
         }
+      } catch (error) {
+        console.error(`Error scraping ${company.name}:`, error);
       }
-    } catch (error) {
-      console.error(`Error scraping ${company.name}:`, error);
-    }
-  }
+      return companyJobs;
+    })
+  );
 
+  results.forEach(companyJobs => jobs.push(...companyJobs));
   return jobs;
 }
