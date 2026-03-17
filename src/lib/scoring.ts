@@ -13,7 +13,7 @@ export function getProfileData() {
   
   // Split by common delimiters (comma, newline, pipe, semicolon) 
   // and strip out markdown formatting/category labels
-  const keywords = skillsText
+  const rawKeywords = skillsText
     .toLowerCase()
     .split(/,|\n|;|\|/)
     .map(s => s.replace(/[*\-#]/g, '').trim())
@@ -22,8 +22,16 @@ export function getProfileData() {
     .filter(s => s && s.length > 1)
     .map(s => s.trim());
 
+  // Further refine keywords to handle things like "Node.js (Express)" 
+  // into separate searchable terms ["node.js", "express"]
+  const refinedKeywords = rawKeywords.flatMap(k => {
+    // Split by parentheses and forward slashes to get sub-terms
+    const subTerms = k.split(/[\(\)\/]/).map(s => s.trim()).filter(s => s.length > 1);
+    return [k, ...subTerms];
+  });
+
   return {
-    keywords: Array.from(new Set(keywords)), // Unique keywords
+    keywords: Array.from(new Set(refinedKeywords)), // Unique keywords
     fullContent: profileContent
   };
 }
@@ -97,17 +105,20 @@ export function calculateJobMatch(job: NormalizedJob): NormalizedJob {
   const hasRelocation = RELOCATION_KEYWORDS.some(k => textToAnalyze.includes(k));
   const isSolutionsRole = SOLUTIONS_KEYWORDS.some(k => titleLower.includes(k));
 
-  // Minimum 40% skill match requirement, but slightly relaxed for dedicated solutions roles 
-  // because their descriptions might be less keyword-dense in the stack department.
-  const skillThreshold = isSolutionsRole ? 30 : 40;
+  // Minimum skill match requirement
+  // We'll be more lenient for EMEA/Germany friendly roles
+  const isFriendlyLocation = hasAcceptKeyword || hasTimezoneKeyword || (isGermany && hasRelocation);
+  const skillThreshold = isSolutionsRole ? 20 : (isFriendlyLocation ? 20 : 40);
   const meetsSkillThreshold = skillMatchPercent >= skillThreshold;
 
   if (hasRejectKeyword && !hasAcceptKeyword && !isGermany) {
     eligibility = 'REJECTED';
-  } else if ((hasAcceptKeyword || hasTimezoneKeyword || (isGermany && hasRelocation)) && meetsSkillThreshold) {
+  } else if (isFriendlyLocation && meetsSkillThreshold) {
     eligibility = 'ELIGIBLE';
+  } else if (isFriendlyLocation && !meetsSkillThreshold) {
+    eligibility = 'REVIEW_NEEDED'; // Don't reject if location is perfect, even if skills are low
   } else if (!meetsSkillThreshold) {
-    eligibility = 'REJECTED'; // Aggressive filtering as requested
+    eligibility = 'REJECTED';
   }
 
   // 3. Bonuses (Max 50 additional points)

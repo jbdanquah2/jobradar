@@ -24,6 +24,7 @@ JobRadar is a personal, automated job discovery and filtering tool designed for 
 
 ### 1. Prerequisites
 - Node.js 20+
+- Docker (for local database)
 - npm
 
 ### 2. Installation
@@ -33,9 +34,12 @@ cd jobradar
 npm install
 ```
 
-### 3. Database Setup
+### 3. Database Setup (Local)
 ```bash
-# Push schema to local SQLite database
+# Start a local PostgreSQL instance
+docker compose up -d
+
+# Push schema to the database
 npx prisma db push
 # Generate Prisma Client
 npx prisma generate
@@ -44,7 +48,12 @@ npx prisma generate
 ### 4. Configuration
 Create a `.env` file in the root:
 ```env
-DATABASE_URL="file:./dev.db"
+# Local Development (Docker)
+DATABASE_URL="postgresql://user:password@localhost:5432/jobradar"
+
+# Vercel Production (Set these in Vercel Dashboard)
+# DATABASE_URL: Provided by Vercel Postgres
+
 RESEND_API_KEY="your_api_key_here" # Optional: for email notifications
 USER_EMAIL="your_email@example.com"
 ```
@@ -86,4 +95,4 @@ This project is optimized for use with **Gemini CLI**.
 - Ask: *"Help me apply for [Job Title] at [Company] from my dashboard"* to generate tailored materials.
 
 ---
-*JobRadar is a private productivity tool. Not intended for public distribution.*
+*JobRadar is an open-source productivity tool for software engineers.*
