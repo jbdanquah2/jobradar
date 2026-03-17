@@ -21,7 +21,7 @@ Software Engineer with 9+ years of experience building web applications, SaaS pl
 - Using AI coding tools and LLMs to prototype web applications, automation tools, and developer workflows.
 - Building AI-powered systems for CV analysis, job matching, and automated document generation.
 
-## Experience
+## Experience 
 
 ### Hues Apply AI | AI Engineer + Full-Stack Developer
 Dec. 2025 – Present | Accra, Ghana (Remote)
