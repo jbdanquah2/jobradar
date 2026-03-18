@@ -26,3 +26,9 @@ model Job {
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
 }
+
+model Profile {
+  id        String   @id @default("singleton")
+  content   String
+  updatedAt DateTime @updatedAt
+}

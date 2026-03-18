@@ -1,6 +1,6 @@
 import Parser from 'rss-parser';
 import { NormalizedJob } from './remoteok';
-import { scrapeArbeitnow } from './arbeitnow';
+import { isLocationCompatible } from './utils';
 
 const parser = new Parser();
 
@@ -13,12 +13,19 @@ export async function scrapeBerlinStartupJobs(): Promise<NormalizedJob[]> {
     const feed = await parser.parseURL('https://berlinstartupjobs.com/engineering/feed/');
     
     for (const item of feed.items) {
+      const title = item.title || 'Software Engineer';
+      const description = item.contentSnippet || item.content || '';
+      const location = 'Berlin, Germany';
+
+      // Narrow down to Global or EMEA jobs only
+      if (!isLocationCompatible(`${title} ${location} ${description}`)) continue;
+
       jobs.push({
-        title: item.title || 'Software Engineer',
+        title: title,
         company: 'Startup in Berlin', // RSS title often includes company, but we'd need more parsing
-        location_text: 'Berlin, Germany',
+        location_text: location,
         remote_type: 'On-site/Remote',
-        description: item.contentSnippet || item.content || '',
+        description: description,
         apply_url: item.link || '',
         source: 'BerlinStartupJobs',
         date_posted: new Date(item.pubDate || new Date()),
@@ -52,7 +59,7 @@ export async function scrapeLandingJobsGermany(): Promise<NormalizedJob[]> {
 
       jobs.push({
         title: item.title,
-        company: item.company_name,
+        company: item.company_name || 'Unknown Company',
         location_text: item.location_name || 'Germany',
         remote_type: item.remote ? 'Remote' : 'On-site',
         description: item.main_requirements || '',
@@ -76,13 +83,12 @@ export async function scrapeLandingJobsGermany(): Promise<NormalizedJob[]> {
 export async function scrapeAllGermanJobs(): Promise<NormalizedJob[]> {
   console.log('--- Starting Dedicated German Jobs Scrape ---');
   
-  const [arbeitnow, berlin, landing] = await Promise.all([
-    scrapeArbeitnow(),
+  const [berlin, landing] = await Promise.all([
     scrapeBerlinStartupJobs(),
     scrapeLandingJobsGermany()
   ]);
 
-  const allGermanJobs = [...arbeitnow, ...berlin, ...landing];
+  const allGermanJobs = [...berlin, ...landing];
   console.log(`--- Finished German Scrape: Found ${allGermanJobs.length} potential roles ---`);
   
   return allGermanJobs;

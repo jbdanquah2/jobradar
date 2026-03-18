@@ -1,32 +1,29 @@
-import { prisma } from '../src/lib/prisma';
-import { scrapeHackerNews } from '../src/lib/scrapers/hackernews';
-import { scrapeAtsJobs } from '../src/lib/scrapers/ats';
-import { scrapeHimalayas } from '../src/lib/scrapers/himalayas';
-import { calculateJobMatch } from '../src/lib/scoring';
+import { prisma } from '@/lib/prisma';
+import { scrapeHackerNews } from '@/lib/scrapers/hackernews';
+import { scrapeAllGermanJobs } from '@/lib/scrapers/germany';
+import { calculateJobMatch, getProfileData } from '@/lib/scoring';
 
 async function main() {
   console.log('--- STARTING MANUAL RESCAN ---');
   
+  const profile = await getProfileData();
+
   console.log('Fetching from Hacker News...');
   const hnJobs = await scrapeHackerNews();
   console.log(`Found ${hnJobs.length} potential HN jobs.`);
 
-  console.log('Fetching from Greenhouse Watchlist...');
-  const atsJobs = await scrapeAtsJobs();
-  console.log(`Found ${atsJobs.length} potential ATS jobs.`);
+  console.log('Fetching from German sources...');
+  const germanJobs = await scrapeAllGermanJobs();
+  console.log(`Found ${germanJobs.length} potential German jobs.`);
 
-  console.log('Fetching from Himalayas...');
-  const himalayasJobs = await scrapeHimalayas();
-  console.log(`Found ${himalayasJobs.length} potential Himalayas jobs.`);
-
-  const allJobs = [...hnJobs, ...atsJobs, ...himalayasJobs];
+  const allJobs = [...hnJobs, ...germanJobs];
   let ingestedCount = 0;
   let skippedCount = 0;
 
   console.log(`Processing ${allJobs.length} total jobs...`);
 
   for (const rawJob of allJobs) {
-    const job = calculateJobMatch(rawJob);
+    const job = await calculateJobMatch(rawJob, profile);
 
     const existing = await prisma.job.findUnique({
       where: { apply_url: job.apply_url }

@@ -18,7 +18,7 @@ export default async function Home(props: {
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredJobsCount / pageSize));
-  const profile = getProfileData();
+  const profile = await getProfileData();
   const profileHasSkills = profile.keywords.length > 5; // Simple heuristic
 
   const orderBy = [

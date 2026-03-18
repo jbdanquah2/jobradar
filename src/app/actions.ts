@@ -2,10 +2,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
-import fs from 'fs';
-import path from 'path';
-import { calculateJobMatch } from '@/lib/scoring';
-
+import { calculateJobMatch, getProfileData } from '@/lib/scoring';
 import { performIngestion } from '@/lib/ingest';
 
 export async function updateJobStatus(id: string, status: string) {
@@ -34,30 +31,27 @@ export async function triggerIngestion() {
 }
 
 export async function getProfileContent() {
-  const profilePath = path.join(process.cwd(), 'data/profile.md');
-  try {
-    return fs.readFileSync(profilePath, 'utf-8');
-  } catch (err) {
-    console.error('Failed to read profile.md:', err);
-    return '# Profile Missing\n\nEnsure data/profile.md is present in build.';
-  }
+  const profile = await getProfileData();
+  return profile.fullContent;
 }
 
 export async function updateProfileContent(newContent: string) {
-  const profilePath = path.join(process.cwd(), 'data/profile.md');
+  // Update DB
+  await prisma.profile.upsert({
+    where: { id: 'singleton' },
+    update: { content: newContent },
+    create: { id: 'singleton', content: newContent }
+  });
   
-  try {
-    fs.writeFileSync(profilePath, newContent, 'utf-8');
-  } catch (err) {
-    console.error('Failed to write profile.md (Vercel is read-only!):', err);
-    throw new Error('FileSystem is read-only. Move Profile to DB for full functionality.');
-  }
-  
+  // Parse the new content for rescoring
+  // We call getProfileData to get the refined keywords logic
+  const profileData = await getProfileData();
+
   // Rescore all jobs
   const jobs = await prisma.job.findMany();
   
   for (const job of jobs) {
-    const scoredJob = calculateJobMatch({
+    const scoredJob = await calculateJobMatch({
       title: job.title,
       company: job.company,
       location_text: job.location_text,
@@ -69,7 +63,7 @@ export async function updateProfileContent(newContent: string) {
       skills_detected: job.skills_detected,
       match_score: 0,
       eligibility_status: 'REVIEW_NEEDED',
-    });
+    }, profileData);
 
     await prisma.job.update({
       where: { id: job.id },

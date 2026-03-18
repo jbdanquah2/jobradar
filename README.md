@@ -1,30 +1,31 @@
 # JobRadar
 
-JobRadar is a personal, automated job discovery and filtering tool designed for **John Danquah-Boateng**. It aggregates remote software engineering roles from high-signal sources, scores them against a personal CV, and filters for eligibility (EMEA/Africa focus and Germany relocation).
+JobRadar is an open-source, automated job discovery and filtering tool designed for software engineers. It aggregates remote engineering roles from high-signal sources, scores them against your personal resume, and filters for eligibility (with a focus on EMEA/Africa and Germany relocation).
 
 ## 🚀 Key Features
 
 - **Automated Ingestion:** Scrapes jobs from Hacker News ("Who is Hiring"), Himalayas, and dedicated German job boards (Arbeitnow, Berlin Startup Jobs, Landing.jobs).
-- **Direct ATS Tracking:** Monitored Greenhouse and Lever boards for specific high-growth startups (Gitpod, PostHog, Railway, etc.).
+- **Specialized Roles:** Targeted scrapers for **Solutions Engineer**, **Solutions Architect**, and **Developer Solutions** roles.
+- **Direct ATS Tracking:** Monitors Greenhouse and Lever boards for specific high-growth startups (Stripe, Cloudflare, PostHog, Railway, etc.).
 - **Smart Scoring:** A heuristic engine calculates a match score (0-100) based on skills, seniority, startup stage, and location compatibility.
-- **Dynamic Profile:** Uses `data/profile.md` as the single source of truth for your CV and skills. Update the file, and scores update on the next fetch.
-- **Location Strictness:** Automatically filters out roles that exclude Africa (e.g., "US Only") while prioritizing German roles with relocation support.
-- **Modern Dashboard:** A responsive Next.js interface to manage jobs (New, Saved, Applied, Ignored) with advanced filtering (Source, Search, Frontend-only, Germany-only).
-- **Gemini CLI Integration:** Includes a custom skill (`job-app-assistant`) to generate tailored cover letters and application intros.
+- **Database-Backed Resume:** Edit and preview your CV/Resume directly in the UI. Match scores are automatically recalculated across all jobs whenever you save changes.
+- **Location Strictness:** Automatically filters out roles that explicitly exclude your region (e.g., "US Only") while prioritizing German roles with relocation support.
+- **Modern Dashboard:** A responsive Next.js interface to manage jobs (New, Saved, Applied, Ignored) with inline job details and advanced filtering.
+- **Onboarding Guide:** Built-in setup guide to help new users configure their profile and trigger their first ingestion.
 
 ## 🛠 Tech Stack
 
-- **Frontend:** Next.js 15+ (App Router), React 19, Tailwind CSS, Lucide Icons.
-- **Backend:** Next.js Server Actions & Route Handlers.
-- **Database:** Prisma ORM with SQLite (Local).
-- **Testing:** Vitest for scoring logic and scraper verification.
-- **Communication:** Resend for daily email notifications (configurable).
+- **Framework:** Next.js 15+ (App Router), React 19, Tailwind CSS.
+- **Database:** Prisma ORM with **PostgreSQL** (Docker for local, Prisma Postgres/Vercel Postgres for production).
+- **UI Components:** Lucide Icons, Headless UI, Radix UI.
+- **Markdown:** `marked` and `dompurify` for safe resume rendering.
+- **Communication:** Resend for daily email notifications (optional).
 
 ## 🏃 Getting Started
 
 ### 1. Prerequisites
 - Node.js 20+
-- Docker (for local database)
+- **Docker Desktop** (for local PostgreSQL)
 - npm
 
 ### 2. Installation
@@ -35,12 +36,14 @@ npm install
 ```
 
 ### 3. Database Setup (Local)
+Ensure Docker is running, then:
 ```bash
 # Start a local PostgreSQL instance
 docker compose up -d
 
-# Push schema to the database
+# Sync the schema to the database
 npx prisma db push
+
 # Generate Prisma Client
 npx prisma generate
 ```
@@ -52,9 +55,9 @@ Create a `.env` file in the root:
 DATABASE_URL="postgresql://user:password@localhost:5432/jobradar"
 
 # Vercel Production (Set these in Vercel Dashboard)
-# DATABASE_URL: Provided by Vercel Postgres
+# DATABASE_URL: Provided by Prisma Postgres or Vercel Postgres
 
-RESEND_API_KEY="your_api_key_here" # Optional: for email notifications
+RESEND_API_KEY="your_api_key_here" # Optional
 USER_EMAIL="your_email@example.com"
 ```
 
@@ -64,35 +67,26 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to view your dashboard.
 
-## 📁 Project Structure
-
-- `src/app/`: Next.js pages, actions, and API routes.
-- `src/components/`: Reusable React components (JobList, DateDisplay).
-- `src/lib/scrapers/`: Individual scraper modules (HN, ATS, Germany, Himalayas).
-- `src/lib/scoring.ts`: The core scoring and filtering logic.
-- `data/profile.md`: Your personal CV and target skills (Single Source of Truth).
-- `scripts/`: Maintenance and utility scripts.
-- `GEMINI.md`: foundational mandates and project context for AI agents.
-
 ## 🔧 Maintenance
 
-### Updating your CV
-Simply edit `data/profile.md` with your latest experience or skills. The next time you click **"Fetch Jobs"**, new listings will be scored against the updated profile.
+### Updating your Resume
+Use the **"Edit Resume"** button in the dashboard header. You can paste your markdown CV and preview it in real-time. Saving will trigger a bulk rescore of all existing jobs in the database.
 
 ### Adding New Startups to Watch
-Edit the `WATCHLIST` in `src/lib/scrapers/ats.ts` to add/remove Greenhouse or Lever board IDs.
+- Edit `WATCHLIST` in `src/lib/scrapers/ats.ts` for general engineering roles.
+- Edit `SOLUTIONS_WATCHLIST` in `src/lib/scrapers/solutions.ts` for solutions-focused roles.
 
 ### Troubleshooting Scrapers
 Use the provided test scripts to debug ingestion:
 ```bash
-# Test ATS scraper
-npx ts-node -O '{"module":"commonjs","moduleResolution":"node","esModuleInterop":true}' scripts/test-ats.ts
+# Test specific scrapers
+npx tsx scripts/test-ats.ts
 ```
 
 ## 🤖 AI Assistance
 This project is optimized for use with **Gemini CLI**. 
 - Run `/skills reload` to enable the `job-app-assistant`.
-- Ask: *"Help me apply for [Job Title] at [Company] from my dashboard"* to generate tailored materials.
+- Ask: *"Help me apply for [Job Title] at [Company] from my dashboard"* to generate tailored cover letters and intros.
 
 ---
 *JobRadar is an open-source productivity tool for software engineers.*

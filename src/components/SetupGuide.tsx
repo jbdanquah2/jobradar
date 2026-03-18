@@ -23,6 +23,7 @@ export default function SetupGuide({
   useEffect(() => {
     const dismissed = localStorage.getItem('jobradar_setup_dismissed');
     if (dismissed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDismissed(true);
     }
     // Show if not dismissed OR if essential steps are missing

@@ -1,4 +1,5 @@
 import { NormalizedJob } from './remoteok';
+import { isLocationCompatible } from './utils';
 
 export const WATCHLIST = [
   { name: 'Canonical', type: 'greenhouse', boardId: 'canonical' },
@@ -26,6 +27,8 @@ export async function scrapeAtsJobs(): Promise<NormalizedJob[]> {
           
           for (const item of data.jobs) {
             const title = item.title.toLowerCase();
+            const location = item.location?.name || '';
+            const content = item.content || '';
             
             // Broadening the filter to ensure we don't miss roles
             if (!title.includes('engineer') && !title.includes('developer') && !title.includes('lead')) continue;
@@ -34,12 +37,15 @@ export async function scrapeAtsJobs(): Promise<NormalizedJob[]> {
             const hasStackMatch = ['node', 'typescript', 'backend', 'full stack', 'ai', 'cloud', 'javascript', 'react', 'next'].some(k => title.includes(k));
             if (!hasStackMatch) continue;
 
+            // Location Filtering
+            if (!isLocationCompatible(`${title} ${location} ${content}`)) continue;
+
             companyJobs.push({
               title: item.title,
               company: company.name,
-              location_text: item.location?.name || 'Remote',
+              location_text: location || 'Remote',
               remote_type: 'Remote',
-              description: item.content || '',
+              description: content,
               apply_url: item.absolute_url,
               source: 'Greenhouse',
               date_posted: new Date(item.updated_at || new Date()),

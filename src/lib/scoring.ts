@@ -1,12 +1,39 @@
+import { prisma } from './prisma';
 import fs from 'fs';
 import path from 'path';
 import { NormalizedJob } from './scrapers/remoteok';
 
-// This is the baseline skill list derived from the profile.md
-// In a full LLM implementation, the LLM will read the whole file.
-export function getProfileData() {
-  const profilePath = path.join(process.cwd(), 'data/profile.md');
-  const profileContent = fs.readFileSync(profilePath, 'utf-8');
+// This is the baseline skill list derived from the profile in DB or file fallback
+export async function getProfileData() {
+  let profileContent = '';
+  
+  try {
+    const profile = await prisma.profile.findUnique({
+      where: { id: 'singleton' }
+    });
+    
+    if (profile) {
+      profileContent = profile.content;
+    } else {
+      // Fallback to local file if DB is empty
+      const profilePath = path.join(process.cwd(), 'data/profile.md');
+      profileContent = fs.readFileSync(profilePath, 'utf-8');
+      
+      // Seed DB for next time (best effort)
+      await prisma.profile.create({
+        data: { id: 'singleton', content: profileContent }
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.error('Failed to get profile data from DB:', err);
+    // Ultimate fallback for Vercel build time or DB issues
+    try {
+      const profilePath = path.join(process.cwd(), 'data/profile.md');
+      profileContent = fs.readFileSync(profilePath, 'utf-8');
+    } catch (_fErr) {
+      profileContent = '# Profile Missing\n\n## Core Technical Skills\nNode.js, React, TypeScript';
+    }
+  }
   
   const skillsMatch = profileContent.match(/## Core Technical Skills([\s\S]*?)##/);
   const skillsText = skillsMatch ? skillsMatch[1] : '';
@@ -78,10 +105,10 @@ export const SOLUTIONS_KEYWORDS = [
   'technical solutions engineer'
 ];
 
-export function calculateJobMatch(job: NormalizedJob): NormalizedJob {
+export async function calculateJobMatch(job: NormalizedJob, preFetchedProfile?: { keywords: string[]; fullContent: string }): Promise<NormalizedJob> {
   const textToAnalyze = `${job.title} ${job.description} ${job.location_text}`.toLowerCase();
   const titleLower = job.title.toLowerCase();
-  const profile = getProfileData();
+  const profile = preFetchedProfile || await getProfileData();
 
   // 1. Skill Match Calculation (0-50 pts)
   let skillsMatched = 0;

@@ -1,30 +1,27 @@
 import { prisma } from './prisma';
 import { scrapeHackerNews } from './scrapers/hackernews';
-import { scrapeAtsJobs } from './scrapers/ats';
-import { scrapeHimalayas } from './scrapers/himalayas';
 import { scrapeAllGermanJobs } from './scrapers/germany';
-import { scrapeSolutionsJobs } from './scrapers/solutions';
-import { calculateJobMatch } from './scoring';
+import { calculateJobMatch, getProfileData } from './scoring';
 
 export async function performIngestion() {
   console.log('--- Starting Job Ingestion ---');
   
-  const [hackerNewsJobs, atsJobs, himalayasJobs, germanJobs, solutionsJobs] = await Promise.all([
+  // Pre-fetch profile once to avoid redundant DB calls during the loop
+  const profile = await getProfileData();
+  
+  const [hackerNewsJobs, germanJobs] = await Promise.all([
     scrapeHackerNews(),
-    scrapeAtsJobs(),
-    scrapeHimalayas(),
     scrapeAllGermanJobs(),
-    scrapeSolutionsJobs()
   ]);
 
-  const allJobs = [...hackerNewsJobs, ...atsJobs, ...himalayasJobs, ...germanJobs, ...solutionsJobs];
+  const allJobs = [...hackerNewsJobs, ...germanJobs];
   console.log(`Scraped ${allJobs.length} potential roles in total.`);
   
   let ingestedCount = 0;
 
   for (const rawJob of allJobs) {
     try {
-      const job = calculateJobMatch(rawJob);
+      const job = await calculateJobMatch(rawJob, profile);
 
       const existing = await prisma.job.findUnique({
         where: { apply_url: job.apply_url }

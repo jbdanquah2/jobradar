@@ -1,4 +1,5 @@
 import { NormalizedJob } from './remoteok';
+import { isLocationCompatible } from './utils';
 
 export const SOLUTIONS_ROLES = [
   'solutions engineer',
@@ -48,13 +49,19 @@ export async function scrapeSolutionsJobs(): Promise<NormalizedJob[]> {
           
           for (const item of data.jobs) {
             const title = item.title.toLowerCase();
+            const location = item.location?.name || '';
+            const content = item.content || '';
+            
             if (SOLUTIONS_ROLES.some(role => title.includes(role))) {
+              // Location Filtering
+              if (!isLocationCompatible(`${title} ${location} ${content}`)) continue;
+
               companyJobs.push({
                 title: item.title,
                 company: company.name,
-                location_text: item.location?.name || 'Remote',
+                location_text: location || 'Remote',
                 remote_type: 'Remote',
-                description: item.content || '',
+                description: content,
                 apply_url: item.absolute_url,
                 source: `ATS (${company.name})`,
                 date_posted: new Date(item.updated_at || new Date()),
@@ -71,13 +78,19 @@ export async function scrapeSolutionsJobs(): Promise<NormalizedJob[]> {
           
           for (const item of data) {
             const title = item.text.toLowerCase();
+            const location = item.categories?.location || '';
+            const description = item.description + ' ' + (item.lists?.map((l: { text: string; content: string }) => l.text + ' ' + l.content).join(' ') || '');
+            
             if (SOLUTIONS_ROLES.some(role => title.includes(role))) {
+              // Location Filtering
+              if (!isLocationCompatible(`${title} ${location} ${description}`)) continue;
+
               companyJobs.push({
                 title: item.text,
                 company: company.name,
-                location_text: item.categories?.location || 'Remote',
+                location_text: location || 'Remote',
                 remote_type: 'Remote',
-                description: item.description + ' ' + (item.lists?.map((l: { text: string; content: string }) => l.text + ' ' + l.content).join(' ') || ''),
+                description: description,
                 apply_url: item.applyUrl,
                 source: `ATS (${company.name})`,
                 date_posted: new Date(item.createdAt || new Date()),
@@ -105,13 +118,19 @@ export async function scrapeSolutionsJobs(): Promise<NormalizedJob[]> {
       if (data.jobs) {
         for (const item of data.jobs) {
           const title = item.title.toLowerCase();
+          const location = item.location || '';
+          const description = item.description || '';
+
           if (SOLUTIONS_ROLES.some(role => title.includes(role))) {
+            // Location Filtering
+            if (!isLocationCompatible(`${title} ${location} ${description}`)) continue;
+
             jobs.push({
               title: item.title,
               company: item.company_name,
-              location_text: item.location || 'Remote',
+              location_text: location || 'Remote',
               remote_type: 'Remote',
-              description: item.description || '',
+              description: description,
               apply_url: item.application_url || item.url,
               source: 'Himalayas (Solutions Search)',
               date_posted: new Date(item.pub_date || new Date()),

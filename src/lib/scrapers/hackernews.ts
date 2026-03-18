@@ -1,4 +1,5 @@
 import { NormalizedJob } from './remoteok';
+import { isLocationCompatible } from './utils';
 
 export async function scrapeHackerNews(): Promise<NormalizedJob[]> {
   const jobs: NormalizedJob[] = [];
@@ -7,8 +8,21 @@ export async function scrapeHackerNews(): Promise<NormalizedJob[]> {
     const userResponse = await fetch('https://hacker-news.firebaseio.com/v0/user/whoishiring.json');
     const userData = await userResponse.json();
     
-    // The first item in submitted is usually the latest 'Who is Hiring' thread
-    const latestThreadId = userData.submitted.find((id: number) => id !== undefined);
+    // The user 'whoishiring' submits multiple threads (Hiring, Freelancer, Hired).
+    // We need to find the latest thread with "Who is hiring" in the title.
+    const submittedIds = userData.submitted || [];
+    let latestThreadId = null;
+
+    // Check the latest 10 submissions to find the actual hiring thread
+    for (const id of submittedIds.slice(0, 10)) {
+      const threadRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
+      const threadData = await threadRes.json();
+      if (threadData && threadData.title && threadData.title.includes('Who is hiring')) {
+        latestThreadId = id;
+        break;
+      }
+    }
+
     if (!latestThreadId) return [];
 
     const threadResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${latestThreadId}.json`);
@@ -19,8 +33,8 @@ export async function scrapeHackerNews(): Promise<NormalizedJob[]> {
     }
 
     // 2. Fetch the top-level comments (each one is a job post)
-    // We'll take the first 100 to stay within serverless timeouts
-    const jobIds = threadData.kids.slice(0, 100);
+    // We'll take the first 300 to stay within serverless timeouts
+    const jobIds = threadData.kids.slice(0, 300);
     
     const jobResults = await Promise.all(
       jobIds.map(async (id: number) => {
@@ -41,21 +55,10 @@ export async function scrapeHackerNews(): Promise<NormalizedJob[]> {
           const isRemoteMatch = /\bremote\b/i.test(rawText);
           const isNegativeMatch = /\b(no|not|non)\s+remote\b/i.test(rawText);
           
-          const REJECT_LOCATION_PATTERNS = [
-            /u\.?s\.?\s+only/i,
-            /united\s+states\s+only/i,
-            /u\.?k\.?\s+only/i,
-            /canada\s+only/i,
-            /europe\s+only/i,
-            /eu\s+only/i,
-            /must\s+be\s+based\s+in\s+the\s+u\.?s\.?/i,
-            /no\s+sponsorship/i,
-            /visa\s+sponsorship\s+not\s+available/i,
-          ];
+          if (!isRemoteMatch || isNegativeMatch) return null;
 
-          const isExcludedLocation = REJECT_LOCATION_PATTERNS.some(pattern => pattern.test(rawText));
-
-          if (!isRemoteMatch || isNegativeMatch || isExcludedLocation) return null;
+          // Location Filtering
+          if (!isLocationCompatible(`${title} ${location} ${rawText}`)) return null;
 
           return {
             title: title,
@@ -70,7 +73,7 @@ export async function scrapeHackerNews(): Promise<NormalizedJob[]> {
             match_score: 0,
             eligibility_status: 'REVIEW_NEEDED',
           };
-        } catch (e) {
+        } catch (_e) {
           return null;
         }
       })

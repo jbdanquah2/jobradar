@@ -1,4 +1,5 @@
 import { NormalizedJob } from './remoteok';
+import { isLocationCompatible } from './utils';
 
 export async function scrapeHimalayas(): Promise<NormalizedJob[]> {
   const jobs: NormalizedJob[] = [];
@@ -14,16 +15,21 @@ export async function scrapeHimalayas(): Promise<NormalizedJob[]> {
 
     for (const item of data.jobs) {
       const title = item.title.toLowerCase();
+      const location = item.location || '';
+      const description = item.description || '';
       
       // Basic filtering for your stack
       if (!title.includes('engineer') && !title.includes('developer')) continue;
 
+      // Location Filtering
+      if (!isLocationCompatible(`${title} ${location} ${description}`)) continue;
+
       jobs.push({
         title: item.title,
         company: item.company_name,
-        location_text: item.location || 'Remote',
+        location_text: location || 'Remote',
         remote_type: 'Remote',
-        description: item.description || '',
+        description: description,
         apply_url: item.application_url || item.url,
         source: 'Himalayas',
         date_posted: new Date(item.pub_date || new Date()),

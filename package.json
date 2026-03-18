@@ -6,11 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest",
     "lint": "eslint",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "6.19.2",
+    "better-sqlite3": "^12.8.0",
     "dompurify": "^3.3.3",
     "lucide-react": "^0.577.0",
     "marked": "^17.0.4",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/dompurify": "^3.0.5",
     "@types/marked": "^5.0.2",
     "@types/node": "^20",
